@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #ffffff;
+  --color-brand-bg: #000000;
+  --color-brand-muted: #0a0a0a;
+  --color-brand-border: #222222;
+  --color-text-dim: #999999;
+}
+
+:root {
+  --background: #000000;
+  --foreground: #ffffff;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+}
+
+/* Custom UI Utilities */
+@layer components {
+  .glass {
+    @apply bg-white/[0.04] backdrop-blur-2xl border border-white/10;
+  }
+  
+  .card-premium {
+    background: linear-gradient(145deg, #0a0a0a 0%, #000000 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    @apply rounded-2xl p-5 shadow-2xl;
+  }
+
+  .credit-card-premium {
+    @apply relative overflow-hidden rounded-[1.5rem] p-6 shadow-2xl;
+    background: linear-gradient(135deg, #111111 0%, #000000 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .btn-primary {
+    @apply bg-white text-black font-bold py-3.5 rounded-xl hover:bg-neutral-100 transition-all active:scale-[0.98] disabled:opacity-50 text-sm;
+  }
+
+  .input-premium {
+    @apply bg-white/[0.05] border border-white/10 text-white px-5 py-3.5 rounded-xl focus:outline-none focus:border-white/30 transition-all text-sm shadow-inner;
+  }
+
+  .nav-active {
+    @apply text-white font-bold opacity-100;
+  }
+
+  .nav-inactive {
+    @apply text-white/40 font-semibold hover:text-white/60;
+  }
+}
+
+/* Transitions */
+.page-transition {
+  @apply transition-all duration-300 ease-out;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+* {
+  scrollbar-width: none;
+}
