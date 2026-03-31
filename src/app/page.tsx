@@ -49,7 +49,7 @@ export default function UnifiedMainInterface() {
 
   // Creation State (In-Drawer)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [drawerStep, setDrawerStep] = useState(0) // 0: select, 1: group, 2: individual, 3: expense
+  const [drawerStep, setDrawerStep] = useState(0) // 0: select, 1: group, 2: individual, 3: expense, 4: success
   const [newGroupName, setNewGroupName] = useState('')
   const [searchPhone, setSearchPhone] = useState('')
   const [searchResults, setSearchResults] = useState<Contact[]>([])
@@ -147,10 +147,26 @@ export default function UnifiedMainInterface() {
      }
   }
 
+  const triggerSuccess = () => {
+    setDrawerStep(4)
+    setTimeout(() => {
+      setIsDrawerOpen(false)
+      setDrawerStep(0)
+      setNewGroupName('')
+      setSearchPhone('')
+      setSelectedMembers([])
+      setExpAmount('')
+      setExpTitle('')
+      setTargetGroupId('')
+    }, 1200)
+    fetchData(false)
+  }
+
   const handleCreate = async (isIndividual: boolean) => {
     if (isCreating || !token) return
     setIsCreating(true)
     try {
+       const nameToUse = isIndividual && selectedMembers[0] ? selectedMembers[0].name : (newGroupName || 'New Group')
        const response = await fetch(`${API_URL}/api/groups`, {
           method: 'POST',
           headers: { 
@@ -158,17 +174,12 @@ export default function UnifiedMainInterface() {
              'Authorization': `${token}`
           },
           body: JSON.stringify({ 
-             name: newGroupName || (isIndividual ? 'Individual' : 'New Group'),
+             name: nameToUse,
              members: selectedMembers.map(m => m._id)
           })
        })
        if (response.ok) {
-          setNewGroupName('')
-          setSearchPhone('')
-          setSelectedMembers([])
-          setDrawerStep(0)
-          setIsDrawerOpen(false)
-          fetchData(false)
+          triggerSuccess()
        }
     } catch (error) {
        console.error('Failed to create:', error)
@@ -192,12 +203,7 @@ export default function UnifiedMainInterface() {
         })
       })
       if (resp.ok) {
-        setExpAmount('')
-        setExpTitle('')
-        setTargetGroupId('')
-        setDrawerStep(0)
-        setIsDrawerOpen(false)
-        fetchData(false)
+        triggerSuccess()
       }
     } catch (e) {
       console.error(e)
@@ -249,15 +255,15 @@ export default function UnifiedMainInterface() {
   return (
     <div className="flex flex-col h-screen bg-black relative overflow-hidden">
       
-      {/* 1. HEADER */}
-      <header className="fixed top-0 left-0 right-0 h-[88px] flex justify-between items-center bg-black/80 backdrop-blur-[30px] z-[100] border-b border-white/[0.08] px-6 shadow-2xl">
+      {/* HEADER */}
+      <header className="fixed top-0 left-0 right-0 h-[88px] flex justify-between items-center bg-black/80 backdrop-blur-[30px] z-[100] border-b border-white/[0.08] px-6">
         <div className="flex items-center gap-3.5">
           <div className="h-10 w-10 rounded-2xl overflow-hidden border border-white/10 bg-white/5 relative cursor-pointer" onClick={() => setActiveViewIdx(3)}>
             <Image src={user.profilePhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} alt="Profile" fill className="object-cover" />
           </div>
           <div>
             <h1 className="text-sm font-black tracking-tighter text-white uppercase leading-none">EQUALY</h1>
-            <p className="text-[8px] font-black text-white/40 uppercase tracking-[0.25em] mt-1.5 flex items-center gap-1.5 opacity-80">
+            <p className="text-[8px] font-black text-white/40 uppercase tracking-[0.25em] mt-1.5 flex items-center gap-1.5 opacity-80 decoration-none">
               <span className="h-1 w-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span> Online
             </p>
           </div>
@@ -268,7 +274,7 @@ export default function UnifiedMainInterface() {
         </div>
       </header>
 
-      {/* 2. MAIN SPA CONTAINER */}
+      {/* SPA VIEWS */}
       <div className="flex-1 mt-[88px] relative overflow-hidden h-[calc(100vh-168px)]">
         <div className="flex h-full transition-transform duration-[600ms] ease-[cubic-bezier(0.23,1,0.32,1)] will-change-transform" style={{ transform: `translateX(-${activeViewIdx * 25}%)`, width: '400%' }}>
           
@@ -300,7 +306,7 @@ export default function UnifiedMainInterface() {
                     <Link href={`/groups/${g._id}`} key={g._id} className="block p-4 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all group active:scale-[0.98] shadow-sm">
                       <div className="flex items-center gap-4">
                         <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center relative border border-white/10 shadow-inner"><UserCircle size={20} className="text-white/10" /></div>
-                        <div className="flex-1 min-w-0"><h3 className="font-bold text-white text-[14px] uppercase truncate tracking-tight">{g.name}</h3><p className="text-[8px] text-white/30 font-black uppercase mt-1 tracking-widest">Individual Split</p></div>
+                        <div className="flex-1 min-w-0"><h3 className="font-bold text-white text-[14px] uppercase truncate tracking-tight">{g.name}</h3><p className="text-[8px] text-white/30 font-black uppercase mt-1 tracking-widest">Direct Split</p></div>
                         <div className="text-right"><p className={`font-black text-[14px] tracking-tighter ${g.balance < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>₹{round(Math.abs(g.balance))}</p></div>
                       </div>
                     </Link>
@@ -372,7 +378,7 @@ export default function UnifiedMainInterface() {
                   <div className="flex-1"><h3 className="font-bold text-white text-[11px] uppercase mb-0.5 tracking-tight">{item.label}</h3><p className="text-[9px] text-white/20 font-black uppercase tracking-widest leading-none">{item.value}</p></div>
                 </div>
               ))}
-              <button onClick={logout} className="w-full h-14 rounded-[2rem] bg-rose-500/5 border border-rose-500/10 flex items-center justify-between px-8 mt-10 active:scale-[0.98] transition-all group shadow-[0_15px_30px_rgba(244,63,94,0.1)]">
+              <button onClick={logout} className="w-full h-14 rounded-[2rem] bg-rose-500/5 border border-rose-500/10 flex items-center justify-between px-8 mt-10 active:scale-[0.98] transition-all group shadow-sm">
                 <div className="font-black text-[11px] text-rose-500 uppercase tracking-widest">Logout</div>
                 <LogOut size={18} className="text-rose-500" />
               </button>
@@ -382,14 +388,14 @@ export default function UnifiedMainInterface() {
         </div>
       </div>
 
-      {/* Primary Floating Action Button (FAB) */}
+      {/* FLOAT ACTION (+) Only on Home & Groups */}
       {activeViewIdx < 2 && (
          <button onClick={() => { setIsDrawerOpen(true); setDrawerStep(0); }} className="fixed bottom-[108px] right-8 h-15 w-15 bg-white rounded-[1.65rem] flex items-center justify-center shadow-2xl z-[110] border-[3px] border-black active:scale-[0.8] transition-all group overflow-hidden animate-in zoom-in-50 duration-500">
-           <Plus size={28} strokeWidth={3.5} className="text-black group-hover:rotate-90 transition-transform duration-500" />
+           <Plus size={28} strokeWidth={3.5} className="text-black group-hover:rotate-90 transition-all duration-500" />
          </button>
       )}
 
-      {/* NAVIGATION BAR */}
+      {/* BOTTOM NAVIGATION */}
       <nav className="fixed bottom-0 left-0 right-0 h-[88px] bg-black/80 backdrop-blur-[40px] border-t border-white/[0.08] flex z-[120] px-4 shadow-[0_-20px_50px_rgba(0,0,0,0.8)]">
         {[ { icon: Home, label: 'Home' }, { icon: Users, label: 'Groups' }, { icon: PieChart, label: 'Activity' }, { icon: Settings, label: 'Settings' } ].map((item, idx) => {
            const active = activeViewIdx === idx;
@@ -407,70 +413,88 @@ export default function UnifiedMainInterface() {
       <div className={`fixed inset-0 z-[160] bg-black/60 backdrop-blur-[20px] transition-all duration-700 ${isDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className={`absolute bottom-0 left-0 right-0 bg-[#0a0a0a] border-t border-white/[0.1] rounded-t-[3.5rem] p-6 pb-12 transition-all duration-[700ms] ease-[cubic-bezier(0.19,1,0.22,1)] shadow-[0_-50px_100px_rgba(0,0,0,1)] ${isDrawerOpen ? 'translate-y-0' : 'translate-y-full'} ${drawerStep > 0 ? 'h-[85vh]' : 'h-[320px]'}`}>
           
-          <div className="flex justify-between items-center mb-8 px-2 select-none">
-            <h3 className="font-black text-[10px] tracking-[0.4em] text-white uppercase leading-none opacity-40">{drawerStep === 0 ? 'Protocol Select' : drawerStep === 1 ? 'New Group' : drawerStep === 2 ? 'Add Person' : 'Log Expense'}</h3>
-            <button onClick={() => { setIsDrawerOpen(false); setDrawerStep(0); }} className="h-9 w-9 bg-white/5 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all"><X size={16} /></button>
-          </div>
+          {drawerStep !== 4 && (
+             <div className="flex justify-between items-center mb-8 px-2 select-none">
+               <h3 className="font-black text-[10px] tracking-[0.4em] text-white uppercase leading-none opacity-40">{drawerStep === 1 ? 'New Group' : drawerStep === 2 ? 'Add Person' : drawerStep === 3 ? 'Log Expense' : 'Action Select'}</h3>
+               <button onClick={() => { setIsDrawerOpen(false); setDrawerStep(0); }} className="h-9 w-9 bg-white/5 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all"><X size={16} /></button>
+             </div>
+          )}
           
           <div className="relative h-[calc(100%-80px)] overflow-hidden">
-             <div className="flex h-full transition-transform duration-[600ms] ease-[cubic-bezier(0.23,1,0.32,1)]" style={{ width: '400%', transform: `translateX(-${drawerStep * 25}%)` }}>
+             <div className="flex h-full transition-transform duration-[600ms] ease-[cubic-bezier(0.23,1,0.32,1)]" style={{ width: '500%', transform: `translateX(-${drawerStep * 20}%)` }}>
                 
-                {/* STEP 0: ENTRY GRID (Optimized) */}
-                <div className="w-1/4 flex-shrink-0 flex flex-col gap-4">
+                {/* STEP 0: ENTRY GRID */}
+                <div className="w-1/5 flex-shrink-0 flex flex-col gap-4">
                    <div className="grid grid-cols-2 gap-4">
                       <button onClick={() => setDrawerStep(1)} className="h-28 bg-white/[0.03] border border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-3 text-white font-black text-[10px] uppercase transition-all hover:bg-white/[0.06] active:scale-95 group shadow-xl"><Users size={20} className="text-white/20 group-hover:text-white transition-all" /> Create Group</button>
-                      <button onClick={() => setDrawerStep(2)} className="h-28 bg-white/[0.03] border border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-3 text-white font-black text-[10px] uppercase transition-all hover:bg-white/[0.06] active:scale-95 group shadow-xl"><UserCircle size={20} className="text-white/20 group-hover:text-white transition-all" /> Double Split</button>
+                      <button onClick={() => setDrawerStep(2)} className="h-28 bg-white/[0.03] border border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-3 text-white font-black text-[10px] uppercase transition-all hover:bg-white/[0.06] active:scale-95 group shadow-xl"><UserCircle size={20} className="text-white/20 group-hover:text-white transition-all" /> Individual</button>
                    </div>
                    <button onClick={() => setDrawerStep(3)} className="h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] flex items-center justify-center gap-4 text-emerald-400 font-black text-[11px] uppercase tracking-[0.3em] transition-all hover:bg-emerald-500/20 active:scale-[0.98] shadow-2xl group"><CreditCard size={18} className="group-hover:scale-110 transition-transform duration-500" /> Log Expense</button>
                 </div>
 
                 {/* STEP 1: CREATE GROUP */}
-                <div className="w-1/4 flex-shrink-0 flex flex-col space-y-8">
-                   <div className="flex-1 overflow-y-auto no-scrollbar space-y-8 pb-4 pr-1">
-                      <div className="space-y-3"><label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Identify Group</label><input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="ENTER NAME" className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl px-6 text-white font-black uppercase text-[13px] focus:outline-none focus:border-white/40 transition-all shadow-inner" /></div>
-                      <div className="space-y-5"><label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Active Members ({selectedMembers.length}/10)</label>
-                         {selectedMembers.length > 0 && <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">{selectedMembers.map(m => (<div key={m._id} className="flex-shrink-0 flex items-center gap-2.5 bg-white/5 border border-white/10 pl-1.5 pr-3.5 py-1.5 rounded-2xl shadow-xl transition-all"><div className="h-6 w-6 rounded-lg overflow-hidden border border-white/10"><Image src={m.profilePhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${m.name}`} alt={m.name} width={24} height={24} /></div><span className="text-[9px] font-bold text-white uppercase">{m.name.split(' ')[0]}</span><button onClick={() => toggleMember(m)} className="text-white/20 hover:text-white"><X size={10} /></button></div>))}</div>}
-                         <div className="relative"><input value={searchPhone} onChange={e => setSearchPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10-DIGIT MOBILE NUMBER" className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl pl-12 pr-6 text-white font-black text-[10px] tracking-[0.2em] focus:border-white/30" /><Search size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20" />{isSearchingContacts && <div className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 border-2 border-white/30 border-t-transparent rounded-full animate-spin"></div>}</div>
-                         <div className="space-y-2">{searchResults.map(res => { const isSel = selectedMembers.some(m => m._id === res._id); return (<button key={res._id} onClick={() => toggleMember(res)} className={`w-full flex items-center gap-4 p-4 rounded-[2rem] border transition-all ${isSel ? 'bg-white/5 border-white/20 scale-[0.98]' : 'border-white/5 hover:bg-white/[0.01]'}`}><div className="h-9 w-9 rounded-2xl bg-white/10 overflow-hidden shadow-inner"><Image src={res.profilePhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${res.name}`} alt={res.name} width={36} height={36} /></div><div className="flex-1 text-left"><p className="font-bold text-white uppercase text-[12px]">{res.name}</p><p className="text-[8px] text-white/20 font-black tracking-widest">{res.phone}</p></div>{isSel && <Check size={14} className="text-emerald-400" />}</button>)})}</div>
+                <div className="w-1/5 flex-shrink-0 flex flex-col space-y-8">
+                   <div className="flex-1 overflow-y-auto no-scrollbar space-y-8 pb-4">
+                      <div className="space-y-3"><label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Group Name</label><input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="ENTER LABEL" className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl px-6 text-white font-black uppercase text-[13px] focus:outline-none focus:border-white/40" /></div>
+                      <div className="space-y-5"><label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Add People ({selectedMembers.length}/10)</label>
+                         {selectedMembers.length > 0 && <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">{selectedMembers.map(m => (<div key={m._id} className="flex-shrink-0 flex items-center gap-2.5 bg-white/5 border border-white/10 pl-1.5 pr-3.5 py-1.5 rounded-2xl shadow-xl transition-all"><div className="h-6 w-6 rounded-lg overflow-hidden border border-white/5"><Image src={m.profilePhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${m.name}`} alt={m.name} width={24} height={24} /></div><span className="text-[9px] font-bold text-white uppercase">{m.name.split(' ')[0]}</span><button onClick={() => toggleMember(m)} className="text-white/20 hover:text-white"><X size={10} /></button></div>))}</div>}
+                         <div className="relative"><input value={searchPhone} onChange={e => setSearchPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10-DIGIT MOBILE NUMBER" className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl pl-12 pr-6 text-white font-black text-[10px] tracking-widest" /><Search size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20" /></div>
+                         <div className="space-y-2">{searchResults.map(res => (<button key={res._id} onClick={() => toggleMember(res)} className={`w-full flex items-center gap-4 p-4 rounded-[2rem] border transition-all ${selectedMembers.some(m => m._id === res._id) ? 'bg-white/5 border-white/20 scale-[0.98]' : 'border-white/5 hover:bg-white/[0.01]'}`}><div className="h-9 w-9 rounded-2xl bg-white/10 overflow-hidden shadow-inner"><Image src={res.profilePhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${res.name}`} alt={res.name} width={36} height={36} /></div><div className="flex-1 text-left"><p className="font-bold text-white uppercase text-[12px]">{res.name}</p><p className="text-[8px] text-white/20 font-black tracking-widest">{res.phone}</p></div>{selectedMembers.some(m => m._id === res._id) && <Check size={14} className="text-emerald-400" />}</button>))}</div>
                       </div>
                    </div>
-                   <div className="flex gap-3 pt-6 border-t border-white/10 bg-[#0a0a0a]"><button onClick={() => setDrawerStep(0)} className="h-14 w-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-white/40 active:scale-95"><ArrowLeft size={18} /></button><button onClick={() => handleCreate(false)} disabled={!newGroupName || selectedMembers.length === 0 || isCreating} className="flex-1 h-14 bg-white text-black rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl disabled:opacity-20 active:scale-[0.98] transition-all">{isCreating ? 'Creating Group...' : 'Initialize Group'}</button></div>
+                   <div className="flex gap-3 pt-6 border-t border-white/10 bg-[#0a0a0a]"><button onClick={() => setDrawerStep(0)} className="h-14 w-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-white/40 active:scale-95"><ArrowLeft size={18} /></button><button onClick={() => handleCreate(false)} disabled={!newGroupName || selectedMembers.length === 0 || isCreating} className="flex-1 h-14 bg-white text-black rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all disabled:opacity-20">{isCreating ? 'Synchronizing...' : 'Create Group'}</button></div>
                 </div>
 
-                {/* STEP 2: INDIVIDUAL SPLIT */}
-                <div className="w-1/4 flex-shrink-0 flex flex-col space-y-8">
+                {/* STEP 2: INDIVIDUAL SPLIT (Refined) */}
+                <div className="w-1/5 flex-shrink-0 flex flex-col space-y-8">
                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-8 pb-4 pr-1">
-                      <div className="space-y-3"><label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Entry Name</label><input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="E.G. RENT, DINNER" className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl px-6 text-white font-black uppercase text-[13px] shadow-inner focus:border-white/40" /></div>
-                      <div className="space-y-5"><label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Locate Peer</label>
-                         {selectedMembers.length > 0 && <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-[2rem] shadow-xl animate-in fade-in zoom-in-95"><div className="h-10 w-10 rounded-2xl overflow-hidden border border-white/20 shadow-inner"><Image src={selectedMembers[0].profilePhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedMembers[0].name}`} alt={selectedMembers[0].name} width={40} height={40} /></div><div className="flex-1 text-left"><p className="font-bold text-white uppercase text-[12px]">{selectedMembers[0].name}</p><p className="text-[8px] text-white/20 font-black uppercase tracking-widest">{selectedMembers[0].phone}</p></div><button onClick={() => setSelectedMembers([])} className="h-8 w-8 bg-white/5 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all"><X size={14} /></button></div>}
-                         <div className="relative"><input value={searchPhone} onChange={e => setSearchPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10-DIGIT MOBILE NUMBER" className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl pl-12 pr-6 text-white font-black text-[10px] tracking-widest" /><Smartphone size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20" /></div>
-                         <div className="space-y-2">{searchResults.map(res => (<button key={res._id} onClick={() => setSelectedMembers([res])} className="w-full flex items-center gap-4 p-4 rounded-[2rem] border border-white/5 bg-transparent hover:bg-white/[0.05] group transition-all active:scale-[0.98] shadow-lg"><div className="h-9 w-9 rounded-2xl bg-white/10 overflow-hidden shadow-inner"><Image src={res.profilePhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${res.name}`} alt={res.name} width={36} height={36} /></div><div className="flex-1 text-left"><p className="font-bold text-white uppercase text-[12px] group-hover:text-emerald-400 transition-colors uppercase">{res.name}</p><p className="text-[8px] text-white/20 font-black tracking-widest uppercase">{res.phone}</p></div><ChevronRight size={16} className="text-white/20 group-hover:text-white" /></button>))}</div>
-                      </div>
+                      {selectedMembers.length === 0 ? (
+                        <div className="space-y-5">
+                            <label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Search Person</label>
+                            <div className="relative"><input value={searchPhone} onChange={e => setSearchPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10-DIGIT MOBILE NUMBER" className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl pl-12 pr-6 text-white font-black text-[10px] tracking-widest" /><Smartphone size={14} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20" /></div>
+                            <div className="space-y-2">{searchResults.map(res => (<button key={res._id} onClick={() => { setSelectedMembers([res]); setNewGroupName(res.name); }} className="w-full flex items-center gap-4 p-4 rounded-[2rem] border border-white/5 bg-transparent hover:bg-white/[0.05] group transition-all active:scale-[0.98] shadow-lg"><div className="h-9 w-9 rounded-2xl bg-white/10 overflow-hidden shadow-inner"><Image src={res.profilePhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${res.name}`} alt={res.name} width={36} height={36} /></div><div className="flex-1 text-left"><p className="font-bold text-white uppercase text-[12px] group-hover:text-emerald-400 transition-colors">{res.name}</p><p className="text-[8px] text-white/20 font-black tracking-widest">{res.phone}</p></div><ChevronRight size={16} className="text-white/20 group-hover:text-white" /></button>))}</div>
+                        </div>
+                      ) : (
+                        <div className="space-y-10 animate-in fade-in zoom-in-95 duration-500">
+                           <div className="text-center pt-10">
+                              <div className="relative inline-block h-28 w-28 rounded-[3rem] bg-white/5 border border-white/10 p-1 mb-6 shadow-2xl"><Image src={selectedMembers[0].profilePhotoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedMembers[0].name}`} alt={selectedMembers[0].name} fill className="object-cover rounded-[2.75rem]" /></div>
+                              <h3 className="text-xl font-black text-white uppercase tracking-widest">{selectedMembers[0].name}</h3>
+                              <p className="text-[9px] text-emerald-400 font-black uppercase tracking-[0.4em] mt-3">Ready to Split</p>
+                           </div>
+                           <button onClick={() => { setSelectedMembers([]); setNewGroupName(''); }} className="mx-auto flex items-center gap-2 text-[9px] font-black text-white/20 uppercase tracking-widest hover:text-white transition-all"><X size={12} /> Remove & Change</button>
+                        </div>
+                      )}
                    </div>
-                   <div className="flex gap-3 pt-6 border-t border-white/10 bg-[#0a0a0a]"><button onClick={() => setDrawerStep(0)} className="h-14 w-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-white/40 active:scale-95"><ArrowLeft size={18} /></button><button onClick={() => handleCreate(true)} disabled={selectedMembers.length === 0 || isCreating} className="flex-1 h-14 bg-white text-black rounded-2xl font-black text-[11px] uppercase tracking-widest disabled:opacity-20 active:scale-[0.98] transition-all shadow-2xl">{isCreating ? 'Linking...' : 'Add Individual'}</button></div>
+                   <div className="flex gap-3 pt-6 border-t border-white/10 bg-[#0a0a0a]"><button onClick={() => setDrawerStep(0)} className="h-14 w-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-white/40 active:scale-95"><ArrowLeft size={18} /></button><button onClick={() => handleCreate(true)} disabled={selectedMembers.length === 0 || isCreating} className="flex-1 h-14 bg-white text-black rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all disabled:opacity-20">{isCreating ? 'Synchronizing...' : 'Initialize Split'}</button></div>
                 </div>
 
                 {/* STEP 3: LOG EXPENSE */}
-                <div className="w-1/4 flex-shrink-0 flex flex-col space-y-8">
+                <div className="w-1/5 flex-shrink-0 flex flex-col space-y-8">
                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-7 pb-4 pr-1">
                       <div className="space-y-3"><label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Amount</label><div className="relative"><span className="absolute left-6 top-1/2 -translate-y-1/2 text-white/30 font-black text-lg select-none">₹</span><input value={expAmount} onChange={e => setExpAmount(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0.00" className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl pl-12 pr-6 text-white font-black text-[18px] tracking-tighter focus:border-white/40 shadow-inner" /></div></div>
                       <div className="space-y-3"><label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Description</label><input value={expTitle} onChange={e => setExpTitle(e.target.value)} placeholder="ENTER LABEL" className="w-full h-14 bg-white/[0.02] border border-white/10 rounded-2xl px-6 text-white font-black uppercase text-[13px] shadow-inner focus:border-white/40" /></div>
-                      <div className="space-y-4"><label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Select Target Workspace</label>
+                      <div className="space-y-4"><label className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">Target Workspace</label>
                          <div className="space-y-2">
-                            {groups.map(g => {
-                               const active = targetGroupId === g._id;
-                               return (
-                                  <button key={g._id} onClick={() => setTargetGroupId(g._id)} className={`w-full flex items-center gap-4 p-4 rounded-[2rem] border transition-all active:scale-[0.98] shadow-lg ${active ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-transparent border-white/5 hover:bg-white/[0.02]'}`}>
-                                     <div className="h-9 w-9 rounded-xl bg-white/5 flex items-center justify-center relative overflow-hidden border border-white/10">{g.groupPhoto ? <Image src={g.groupPhoto} alt={g.name} fill className="object-cover" /> : <Layers size={16} className="text-white/10" />}</div>
-                                     <div className="flex-1 text-left"><p className={`font-bold text-[12px] uppercase tracking-tight ${active ? 'text-emerald-400' : 'text-white'}`}>{g.name}</p><p className="text-[8px] text-white/20 font-black uppercase tracking-widest leading-none">{g.members.length} Members</p></div>
-                                     {active && <div className="h-5 w-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.5)]"><Check size={12} strokeWidth={4} className="text-black" /></div>}
-                                  </button>
-                               )
-                            })}
+                            {groups.map(g => (
+                               <button key={g._id} onClick={() => setTargetGroupId(g._id)} className={`w-full flex items-center gap-4 p-4 rounded-[2rem] border transition-all active:scale-[0.98] shadow-lg ${targetGroupId === g._id ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-transparent border-white/5 hover:bg-white/[0.02]'}`}>
+                                  <div className="h-9 w-9 rounded-xl bg-white/5 flex items-center justify-center relative overflow-hidden border border-white/10">{g.groupPhoto ? <Image src={g.groupPhoto} alt={g.name} fill className="object-cover" /> : <Layers size={16} className="text-white/10" />}</div>
+                                  <div className="flex-1 text-left"><p className={`font-bold text-[12px] uppercase tracking-tight ${targetGroupId === g._id ? 'text-emerald-400' : 'text-white'}`}>{g.name}</p><p className="text-[8px] text-white/20 font-black uppercase tracking-widest leading-none">{g.members.length} Members</p></div>
+                                  {targetGroupId === g._id && <div className="h-5 w-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.5)]"><Check size={12} strokeWidth={4} className="text-black" /></div>}
+                               </button>
+                            ))}
                          </div>
                       </div>
                    </div>
                    <div className="flex gap-3 pt-6 border-t border-white/10 bg-[#0a0a0a]"><button onClick={() => setDrawerStep(0)} className="h-14 w-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-white/40 active:scale-95"><ArrowLeft size={18} /></button><button onClick={handleLogExpense} disabled={!expAmount || !expTitle || !targetGroupId || isCreating} className="flex-1 h-14 bg-emerald-500 text-black rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] shadow-[0_20px_50px_-10px_rgba(16,185,129,0.4)] transition-all active:scale-[0.98] disabled:opacity-20">{isCreating ? 'Recording...' : 'Record Expense'}</button></div>
+                </div>
+
+                {/* STEP 4: SUCCESS (Tick Animation) */}
+                <div className="w-1/5 flex-shrink-0 flex flex-col items-center justify-center">
+                    <div className="h-32 w-32 bg-white rounded-full flex items-center justify-center shadow-[0_0_100px_rgba(255,255,255,0.2)] animate-in zoom-in-50 duration-500 ease-out">
+                       <Check size={64} className="text-black" strokeWidth={5} />
+                    </div>
+                    <h2 className="mt-10 text-xl font-black text-white uppercase tracking-[0.6em] ml-[0.6em] animate-in slide-in-from-bottom-4 duration-700">SUCCESS</h2>
+                    <p className="mt-4 text-[9px] font-black text-white/20 uppercase tracking-[0.4em] ml-[0.4em]">Protocol Synchronized</p>
                 </div>
 
              </div>
